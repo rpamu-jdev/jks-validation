@@ -7,22 +7,24 @@ import javax.net.ssl.*;
 import java.io.*;
 import java.net.Socket;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
-import java.security.cert.Certificate; // Standard Certificate
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
+import java.util.Scanner;
 
 @Service
 public class JksValidationService {
 
-    public String testConnection(MultipartFile jksFile,
-                                 String keystorePassword,
-                                 String keyPassword,
-                                 String alias,
-                                 String targetUrl,
-                                 String httpMethod,
-                                 String headers,
-                                 String requestBody) throws Exception {
+    public ValidationResult testConnection(MultipartFile jksFile,
+                                           String keystorePassword,
+                                           String keyPassword,
+                                           String alias,
+                                           String targetUrl,
+                                           String httpMethod,
+                                           String headers,
+                                           String requestBody) throws Exception {
 
         System.out.println("\n>>> --- DIAGNOSTIC START ---");
 
@@ -56,7 +58,7 @@ public class JksValidationService {
                 ? keyPassword.toCharArray()
                 : keystorePassword.toCharArray();
 
-        // 4. *** CRITICAL DIAGNOSTIC STEP (Fixed Casting) ***
+        // 4. Critical Key Check
         try {
             System.out.println(">>> Attempting to retrieve Private Key...");
             Key key = keyStore.getKey(targetAlias, effectiveKeyPass);
@@ -68,21 +70,13 @@ public class JksValidationService {
             Certificate[] rawChain = keyStore.getCertificateChain(targetAlias);
             System.out.println(">>> Certificate Chain Length: " + (rawChain != null ? rawChain.length : "null"));
 
-            if (rawChain != null && rawChain.length > 0) {
-                if (rawChain[0] instanceof X509Certificate) {
-                    X509Certificate x509 = (X509Certificate) rawChain[0];
-                    System.out.println("    Leaf Subject: " + x509.getSubjectDN());
-                    System.out.println("    Leaf Issuer:  " + x509.getIssuerDN());
-                }
-            }
-
         } catch (UnrecoverableKeyException e) {
             throw new Exception("PASSWORD ERROR: The 'Key Password' is incorrect. " + e.getMessage());
         } catch (Exception e) {
             throw new Exception("KEY ERROR: Could not read key [" + targetAlias + "]. " + e.getMessage());
         }
 
-        // 5. Setup Custom KeyManager
+        // 5. Setup Custom KeyManager (Forces the specific alias)
         final String finalAlias = targetAlias;
         final KeyStore finalKeyStore = keyStore;
         final char[] finalPass = effectiveKeyPass;
@@ -93,7 +87,6 @@ public class JksValidationService {
                 System.out.println(">>> SSL Handshake asked for alias. Returning: " + finalAlias);
                 return finalAlias;
             }
-
             @Override public String chooseServerAlias(String keyType, Principal[] issuers, Socket socket) { return finalAlias; }
             @Override public String[] getClientAliases(String keyType, Principal[] issuers) { return new String[]{finalAlias}; }
             @Override public String[] getServerAliases(String keyType, Principal[] issuers) { return new String[]{finalAlias}; }
@@ -101,13 +94,10 @@ public class JksValidationService {
             @Override
             public X509Certificate[] getCertificateChain(String alias) {
                 try {
-                    // SAFE CASTING LOGIC
                     Certificate[] cChain = finalKeyStore.getCertificateChain(alias);
                     if (cChain == null) return null;
                     X509Certificate[] xChain = new X509Certificate[cChain.length];
-                    for (int i = 0; i < cChain.length; i++) {
-                        xChain[i] = (X509Certificate) cChain[i];
-                    }
+                    for (int i = 0; i < cChain.length; i++) { xChain[i] = (X509Certificate) cChain[i]; }
                     return xChain;
                 } catch (Exception e) { e.printStackTrace(); return null; }
             }
@@ -121,7 +111,7 @@ public class JksValidationService {
 
         // 6. Connect
         TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        tmf.init(keyStore);
+        tmf.init(keyStore); // Uses the JKS as the trust store too
 
         SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
         sslContext.init(new KeyManager[]{customKeyManager}, tmf.getTrustManagers(), new SecureRandom());
@@ -130,7 +120,8 @@ public class JksValidationService {
         URL url = new URL(targetUrl);
         HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
         connection.setSSLSocketFactory(sslContext.getSocketFactory());
-        connection.setConnectTimeout(10000);
+        connection.setConnectTimeout(10000); // 10s timeout
+        connection.setReadTimeout(10000);    // 10s read timeout
         connection.setRequestMethod(httpMethod);
 
         // Headers
@@ -145,18 +136,38 @@ public class JksValidationService {
             }
         }
 
-        // Body
+        // Request Body
         if (requestBody != null && !requestBody.trim().isEmpty()) {
             connection.setDoOutput(true);
             try (OutputStream os = connection.getOutputStream()) {
-                os.write(requestBody.getBytes("UTF-8"));
+                os.write(requestBody.getBytes(StandardCharsets.UTF_8));
             }
         }
 
+        // 7. Execute & Read Response (NEW LOGIC)
         connection.connect();
-        int responseCode = connection.getResponseCode();
 
-        System.out.println(">>> SUCCESS! Response Code: " + responseCode);
-        return "Connected! HTTP " + responseCode + "\nCipher: " + connection.getCipherSuite();
+        int status = connection.getResponseCode();
+        String msg = connection.getResponseMessage();
+        String cipher = connection.getCipherSuite();
+        System.out.println(">>> SUCCESS! Response Code: " + status);
+
+        // Read Body (Handle both Success and Error streams)
+        InputStream stream;
+        if (status >= 200 && status < 300) {
+            stream = connection.getInputStream();
+        } else {
+            stream = connection.getErrorStream();
+        }
+
+        String responseBody = "";
+        if (stream != null) {
+            try (Scanner scanner = new Scanner(stream, StandardCharsets.UTF_8.name())) {
+                responseBody = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
+            }
+        }
+
+        // Return the Data Object
+        return new ValidationResult(status, msg, cipher, responseBody);
     }
 }

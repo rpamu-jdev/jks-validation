@@ -2,220 +2,433 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>JKS Validator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Rajkumar Pamu">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
-        /* --- RESET & LAYOUT --- */
-        body {
-            margin: 0; padding: 40px 20px;
+        /* --- RESET & VARIABLES --- */
+        :root {
+            --primary: #dc2626;       /* Red 600 */
+            --primary-hover: #b91c1c; /* Red 700 */
+            --primary-light: #fef2f2; /* Red 50 */
+            --bg-page: #f9fafb;
+            --bg-panel: #ffffff;
+            --border: #e5e7eb;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --header-height: 70px;
+            --footer-height: 40px;
+        }
+
+        html, body {
+            margin: 0; padding: 0;
             font-family: 'Inter', sans-serif;
-            background-color: #f4f6f8;
-            color: #334155;
-            display: flex; justify-content: center;
-        }
-
-        .container {
-            width: 100%; max-width: 850px;
-        }
-
-        /* --- CARD STYLE (Input Section) --- */
-        .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            height: 100vh;
+            width: 100vw;
             overflow: hidden;
-            border: 1px solid #e2e8f0;
         }
 
-        /* --- TOP BAR --- */
-        .request-bar {
+        /* --- MAIN LAYOUT (Grid) --- */
+        .main-layout {
+            display: grid;
+            grid-template-rows: auto 1fr auto; /* Header, Content, Footer */
+            height: 100%;
+            width: 100%;
+        }
+
+        /* --- 1. GLOBAL HEADER --- */
+        .global-header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            height: var(--header-height);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            z-index: 20;
+        }
+
+        .brand {
+            font-weight: 700; font-size: 1.1rem; color: #111827;
+            white-space: nowrap; display: flex; flex-direction: column;
+            line-height: 1.1;
+        }
+        .brand span { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
+
+        .url-bar {
+            flex-grow: 1; /* Takes all available middle space */
+            display: flex;
+            gap: 10px;
+        }
+
+        .controls {
+            display: flex; gap: 10px; flex-shrink: 0;
+        }
+
+        /* --- 2. WORKSPACE --- */
+        .workspace {
+            display: grid;
+            grid-template-columns: 400px 1fr; /* Fixed Left, Fluid Right */
+            overflow: hidden;
+            background: var(--bg-page);
+        }
+
+        /* Left Panel */
+        .left-panel {
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            display: flex; flex-direction: column;
             padding: 20px;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex; gap: 10px; align-items: center;
         }
 
+        /* Right Panel */
+        .right-panel {
+            background: var(--bg-panel);
+            overflow-y: auto;
+            display: flex; flex-direction: column;
+            padding: 20px;
+        }
+
+        /* --- 3. FOOTER --- */
+        .global-footer {
+            background: white;
+            border-top: 1px solid var(--border);
+            height: var(--footer-height);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; color: var(--text-muted);
+            z-index: 20;
+        }
+        .global-footer strong { color: var(--primary); font-weight: 600; margin-left: 4px; }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 900px) {
+            html, body { height: auto; overflow-y: auto; }
+            .main-layout { display: flex; flex-direction: column; height: auto; }
+
+            .global-header { height: auto; flex-wrap: wrap; padding: 15px; gap: 15px; }
+            .url-bar { width: 100%; order: 2; }
+            .controls { width: 100%; order: 3; justify-content: space-between; }
+            .brand { width: 100%; order: 1; text-align: center; align-items: center;}
+
+            .workspace { display: flex; flex-direction: column; height: auto; }
+            .left-panel { border-right: none; border-bottom: 1px solid var(--border); height: auto; overflow: visible;}
+            .right-panel { height: auto; min-height: 500px; overflow: visible; }
+
+            .import-btn, .send-btn { flex: 1; }
+        }
+
+        /* --- UI ELEMENTS --- */
         select {
-            padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px;
-            background: white; font-weight: 600; color: #334155; cursor: pointer;
+            padding: 0 14px; height: 40px; border: 1px solid #d1d5db; border-radius: 6px;
+            background: #f9fafb; font-weight: 600; color: #374151; cursor: pointer;
         }
 
         .url-input {
-            flex-grow: 1; padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+            flex-grow: 1; height: 38px; padding: 0 14px; border: 1px solid #d1d5db; border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #111827;
         }
 
-        .send-btn {
-            padding: 10px 30px; background-color: #2563eb; color: white;
-            border: none; border-radius: 6px; font-weight: 600; cursor: pointer;
-            transition: background 0.2s;
+        .send-btn, .import-btn {
+            height: 40px; padding: 0 20px; border-radius: 6px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; justify-content: center;
         }
-        .send-btn:hover { background-color: #1d4ed8; }
+        .send-btn { background-color: var(--primary); color: white; border: none; }
+        .send-btn:hover { background-color: var(--primary-hover); }
+
+        .import-btn { background-color: white; color: var(--primary); border: 1px solid var(--primary); }
+        .import-btn:hover { background-color: var(--primary-light); }
+
+        .url-input:focus, select:focus, input:focus, textarea:focus {
+            outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
 
         /* --- TABS --- */
-        .tabs {
-            display: flex; background: white; padding: 0 20px; border-bottom: 1px solid #e2e8f0;
-        }
+        .tabs { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 20px; }
         .tab {
-            padding: 15px 20px; cursor: pointer; font-size: 0.9rem; font-weight: 500; color: #64748b;
-            border-bottom: 2px solid transparent;
+            padding: 10px 16px; cursor: pointer; font-size: 0.85rem; font-weight: 500; color: #6b7280;
+            border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;
         }
-        .tab:hover { color: #334155; }
-        .tab.active { color: #2563eb; border-bottom: 2px solid #2563eb; }
+        .tab:hover { color: #374151; }
+        .tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); font-weight: 600; }
 
-        /* --- CONTENT AREAS --- */
-        .tab-content {
-            padding: 25px; display: none; min-height: 250px;
-        }
-        .tab-content.active { display: block; animation: fadeIn 0.2s; }
+        .tab-content { display: none; animation: fadeIn 0.2s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* --- FORMS --- */
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
-        .form-group { margin-bottom: 15px; }
-
-        label {
-            display: block; font-size: 0.75rem; font-weight: 700; color: #64748b;
-            margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-
+        /* --- FORM INPUTS --- */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 0.7rem; font-weight: 700; color: #4b5563; margin-bottom: 6px; text-transform: uppercase; }
         input[type="text"], input[type="password"], input[type="file"] {
-            width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;
-            box-sizing: border-box; transition: border-color 0.2s;
+            width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box;
         }
-        input:focus { outline: none; border-color: #2563eb; }
-
         textarea {
-            width: 100%; padding: 15px; border: 1px solid #cbd5e1; border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
-            min-height: 200px; resize: vertical; box-sizing: border-box;
-            background: #f8fafc;
+            width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+            resize: vertical; background: #f9fafb; box-sizing: border-box;
         }
+        #headers textarea { min-height: 200px; }
+        #body textarea { min-height: 400px; }
+        .file-help { margin-top: 5px; font-size: 0.75rem; color: #ef4444; }
 
-        /* --- RESPONSE SECTION --- */
-        .response-section { margin-top: 25px; }
+        /* --- RESPONSE --- */
+        .response-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-shrink: 0; }
+        .response-title { font-weight: 700; color: #111827; font-size: 1.1rem; }
+        .status-badge { padding: 6px 14px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; }
+        .success { background: #ecfdf5; color: #047857; border: 1px solid #d1fae5; }
+        .error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
-        .response-header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+        .meta-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; flex-shrink: 0; }
+        .meta-item {
+            background: #fef2f2; color: #991b1b; padding: 8px 12px; border-radius: 6px;
+            font-size: 0.8rem; font-weight: 600; font-family: 'JetBrains Mono', monospace;
+            display: flex; align-items: center; gap: 8px; border: 1px solid #fee2e2;
         }
-        .response-title { font-weight: 600; color: #334155; font-size: 1.1rem; }
-
-        .status-badge {
-            padding: 4px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 600;
-        }
-        .success { background: #dcfce7; color: #166534; }
-        .error { background: #fee2e2; color: #991b1b; }
+        .meta-item.cipher { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 
         .response-box {
-            background: #1e293b; color: #e2e8f0;
-            padding: 20px; border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
-            white-space: pre-wrap; line-height: 1.5;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            background: #111827; color: #e5e7eb; padding: 24px; border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+            white-space: pre-wrap; line-height: 1.6;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            flex-grow: 1; border: 1px solid #374151; word-wrap: break-word;
         }
-        .placeholder { color: #64748b; font-style: italic; text-align: center; padding: 40px; background: transparent; box-shadow: none; border: 2px dashed #cbd5e1; }
+        .placeholder {
+            color: #9ca3af; font-style: italic; display: flex; align-items: center; justify-content: center;
+            background: #f3f4f6; border: 2px dashed #d1d5db; color: #6b7280; box-shadow: none;
+        }
+
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 100;
+            display: none; justify-content: center; align-items: center;
+        }
+        .modal {
+            background: white; width: 90%; max-width: 600px;
+            border-radius: 8px; padding: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal h3 { margin-top: 0; color: #111827; }
+        .modal textarea { width: 100%; height: 200px; margin: 15px 0; font-size: 0.85rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-
-    <div style="text-align: center; margin-bottom: 30px;">
-        <h2 style="margin: 0; color: #1e293b;">SSL Connection Validator</h2>
-        <p style="margin: 5px 0 0 0; color: #64748b; font-size: 0.9rem;">Test mutual TLS (mTLS) and JKS configurations</p>
+<div id="curlModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Import cURL</h3>
+        <p style="margin-top:-10px; color:#6b7280; font-size:0.9rem;">Supports multi-line commands with \ line continuations.</p>
+        <textarea id="curlInput" placeholder="curl -X POST https://api.example.com ..."></textarea>
+        <div class="modal-actions">
+            <button type="button" class="import-btn" style="width:auto" onclick="closeCurlModal()">Cancel</button>
+            <button type="button" class="send-btn" style="width:auto" onclick="processCurl()">Import</button>
+        </div>
     </div>
+</div>
 
-    <form method="POST" action="/validate" enctype="multipart/form-data">
+<form method="POST" action="/validate" enctype="multipart/form-data" class="main-layout" name="mainForm">
 
-        <div class="card">
+    <header class="global-header">
+        <div class="brand">
+            SSL Validator
+            <span>mTLS Tool</span>
+        </div>
 
-            <div class="request-bar">
-                <select name="method">
-                    <option value="GET" th:selected="${method == 'GET'}">GET</option>
-                    <option value="POST" th:selected="${method == 'POST'}">POST</option>
-                    <option value="PUT" th:selected="${method == 'PUT'}">PUT</option>
-                </select>
-                <input type="url" name="url" class="url-input" placeholder="https://api.example.com/v1/resource" th:value="${url}" required>
-                <button type="submit" class="send-btn">Send Request</button>
-            </div>
+        <div class="url-bar">
+            <select name="method" id="methodSelect">
+                <option value="GET" th:selected="${method == 'GET'}">GET</option>
+                <option value="POST" th:selected="${method == 'POST'}">POST</option>
+                <option value="PUT" th:selected="${method == 'PUT'}">PUT</option>
+            </select>
+            <input type="url" name="url" id="urlInput" class="url-input" placeholder="https://api.example.com/v1" th:value="${url}" required>
+        </div>
 
+        <div class="controls">
+            <button type="button" class="import-btn" onclick="openCurlModal()">Import cURL</button>
+            <button type="button" class="send-btn" onclick="document.forms['mainForm'].submit()">Send</button>
+        </div>
+    </header>
+
+    <div class="workspace">
+
+        <div class="left-panel">
             <div class="tabs">
-                <div class="tab active" onclick="switchTab('auth')">Authorization (JKS)</div>
+                <div class="tab active" onclick="switchTab('auth')">Auth (JKS)</div>
                 <div class="tab" onclick="switchTab('headers')">Headers</div>
                 <div class="tab" onclick="switchTab('body')">Body</div>
             </div>
 
             <div id="auth" class="tab-content active">
                 <div class="form-group">
-                    <label>JKS / KeyStore File</label>
+                    <label>JKS File</label>
                     <input type="file" name="file" accept=".jks,.keystore" required>
-                    <div style="margin-top: 5px; font-size: 0.8rem; color: #94a3b8;">* Uploading a new file is required for every request (security).</div>
+                    <div class="file-help">* Security: You must re-upload the file for every request.</div>
                 </div>
-
                 <div class="form-grid">
                     <div>
-                        <label>Keystore Password</label>
+                        <label>Store Password</label>
                         <input type="password" name="keystorePassword" th:value="${keystorePassword}" required>
                     </div>
                     <div>
                         <label>Key Password</label>
-                        <input type="password" name="keyPassword" th:value="${keyPassword}" placeholder="Same as keystore if empty">
+                        <input type="password" name="keyPassword" th:value="${keyPassword}" placeholder="Optional">
                     </div>
                 </div>
-
                 <div class="form-group">
-                    <label>Alias Check (Optional)</label>
+                    <label>Alias Check</label>
                     <input type="text" name="alias" th:value="${alias}" placeholder="e.g. my-client-cert">
                 </div>
             </div>
 
             <div id="headers" class="tab-content">
-                <label>Key: Value (One per line)</label>
-                <textarea name="headers" placeholder="Content-Type: application/json&#10;Authorization: Bearer xyz" th:text="${headers}"></textarea>
+                <label>Headers</label>
+                <textarea name="headers" id="headersInput" placeholder="Key: Value" th:text="${headers}"></textarea>
             </div>
 
             <div id="body" class="tab-content">
-                <label>Request Body</label>
-                <textarea name="body" placeholder='{ "id": 123, "status": "active" }' th:text="${body}"></textarea>
+                <label>Body</label>
+                <textarea name="body" id="bodyInput" placeholder='{ "id": 123 }' th:text="${body}"></textarea>
             </div>
         </div>
-    </form>
 
-    <div class="response-section">
-        <div class="response-header">
-            <span class="response-title">Response Output</span>
-            <span th:if="${success != null}"
-                  th:text="${success} ? 'Status: Success' : 'Status: Failed'"
-                  th:classappend="${success} ? 'success status-badge' : 'error status-badge'">
-            </span>
+        <div class="right-panel">
+            <div class="response-header">
+                <span class="response-title">Result</span>
+                <span th:if="${success != null}"
+                      th:text="${success} ? 'CONNECTED' : 'FAILED'"
+                      th:classappend="${success} ? 'success status-badge' : 'error status-badge'">
+                </span>
+            </div>
+
+            <div class="meta-bar" th:if="${success}">
+                <div class="meta-item">
+                    <span style="opacity:0.7; font-size:0.7rem; text-transform:uppercase;">HTTP</span>
+                    <span th:text="${statusCode != null} ? ${statusCode} : '200 OK'">200 OK</span>
+                </div>
+                <div class="meta-item cipher" id="cipherBadge">
+                    <span style="opacity:0.7; font-size:0.7rem; text-transform:uppercase;">Cipher</span>
+                    <span class="cipher-text" th:text="${cipherSuite != null and cipherSuite != ''} ? ${cipherSuite} : 'Unknown'">Unknown</span>
+                </div>
+            </div>
+
+            <div th:if="${response}" style="display:flex; flex-direction:column; flex-grow:1;">
+                <div class="response-box" id="responseContent" th:text="${response}"></div>
+            </div>
+
+            <div th:unless="${response}" class="response-box placeholder">
+                Waiting for request... <br> Output will appear here.
+            </div>
         </div>
 
-        <div th:if="${response}" class="response-box" th:text="${response}"></div>
-
-        <div th:unless="${response}" class="response-box placeholder">
-            Ready to test. Enter URL and JKS details above.
-        </div>
     </div>
 
-</div>
+    <footer class="global-footer">
+        <p>Designed by <strong>Rajkumar Pamu</strong> | &copy; Extio Technology</p>
+    </footer>
+
+</form>
 
 <script>
     function switchTab(tabName) {
-        // Hide all contents
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        // Deactivate all tabs
         document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-
-        // Activate current
         document.getElementById(tabName).classList.add('active');
 
-        // Find button by text approximation or index
         const tabs = document.querySelectorAll('.tab');
         if(tabName === 'auth') tabs[0].classList.add('active');
         if(tabName === 'headers') tabs[1].classList.add('active');
         if(tabName === 'body') tabs[2].classList.add('active');
     }
+
+    // --- ENHANCED CURL PARSER ---
+    function processCurl() {
+        let curlStr = document.getElementById('curlInput').value;
+        if (!curlStr) return;
+
+        // 1. CLEANUP: Remove backslashes followed by newlines (line continuations)
+        // Replaces " \" at end of lines with a single space to merge into one line
+        curlStr = curlStr.replace(/\\\s*\n/g, ' ').replace(/\\\s*\r\n/g, ' ');
+
+        // 2. EXTRACT URL (Handles --location and quotes)
+        // Looks for http/https inside quotes or plain text
+        const urlMatch = curlStr.match(/['"]?(https?:\/\/[^'"\s]+)['"]?/);
+        if (urlMatch && urlMatch[1]) {
+            document.getElementById('urlInput').value = urlMatch[1];
+        }
+
+        // 3. EXTRACT METHOD
+        let method = 'GET';
+        // Check explicit -X or --request
+        const methodMatch = curlStr.match(/(?:-X|--request)\s+([A-Z]+)/);
+        if (methodMatch && methodMatch[1]) {
+            method = methodMatch[1];
+        } else if (curlStr.match(/(?:-d|--data|--data-raw|--data-binary)/)) {
+            // Implicit POST if data present
+            method = 'POST';
+        }
+        document.getElementById('methodSelect').value = method;
+
+        // 4. EXTRACT HEADERS (Handles -H and --header)
+        // Matches: -H 'Key: Value' OR --header "Key: Value"
+        // Regex explanation: (?:-H|--header)\s+ matches flag
+        // (['"]) matches opening quote (captured group 1)
+        // ([\s\S]*?) matches content (non-greedy, including newlines)
+        // \1 matches the same closing quote
+        const headerRegex = /(?:-H|--header)\s+(['"])([\s\S]*?)\1/g;
+        let headersText = "";
+        let headerMatch;
+        while ((headerMatch = headerRegex.exec(curlStr)) !== null) {
+            headersText += headerMatch[2].trim() + "\n";
+        }
+        if (headersText) {
+            document.getElementById('headersInput').value = headersText.trim();
+        }
+
+        // 5. EXTRACT BODY (Handles -d, --data, etc.)
+        const bodyRegex = /(?:-d|--data|--data-raw|--data-binary)\s+(['"])([\s\S]*?)\1/;
+        const bodyMatch = curlStr.match(bodyRegex);
+
+        if (bodyMatch && bodyMatch[2]) {
+            document.getElementById('bodyInput').value = bodyMatch[2];
+            switchTab('body');
+        } else if (headersText) {
+            switchTab('headers');
+        }
+
+        closeCurlModal();
+    }
+
+    // Modal Controls
+    function openCurlModal() {
+        document.getElementById('curlModal').style.display = 'flex';
+        document.getElementById('curlInput').focus();
+    }
+    function closeCurlModal() {
+        document.getElementById('curlModal').style.display = 'none';
+    }
+    document.addEventListener('keydown', function(event) {
+        if (event.key === "Escape") closeCurlModal();
+    });
+
+    // Cipher Badge Auto-fix
+    window.addEventListener('DOMContentLoaded', () => {
+        const cipherBadge = document.querySelector('#cipherBadge .cipher-text');
+        const responseBox = document.getElementById('responseContent');
+        if (cipherBadge && responseBox && cipherBadge.innerText === 'Unknown') {
+            const content = responseBox.innerText;
+            const match = content.match(/Cipher:\s*([A-Za-z0-9_]+)/);
+            if (match && match[1]) cipherBadge.innerText = match[1];
+        }
+    });
 </script>
 
 </body>

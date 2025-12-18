@@ -18,7 +18,6 @@ public class JksValidatorController {
 
     @GetMapping("/")
     public String index(Model model) {
-        // Set default values for first load
         model.addAttribute("method", "GET");
         return "index";
     }
@@ -34,7 +33,7 @@ public class JksValidatorController {
                            @RequestParam("body") String body,
                            Model model) {
 
-        // Retain user inputs in the form
+        // 1. Retain user inputs
         model.addAttribute("url", url);
         model.addAttribute("method", method);
         model.addAttribute("headers", headers);
@@ -47,11 +46,15 @@ public class JksValidatorController {
             if (url == null || url.trim().isEmpty()) throw new IllegalArgumentException("URL is required");
             if (file.isEmpty()) throw new IllegalArgumentException("JKS File is required");
 
-            String result = service.testConnection(
+            // 2. Call Service (Now returns an Object, not a String)
+            ValidationResult result = service.testConnection(
                     file, keystorePassword, keyPassword, alias, url, method, headers, body
             );
 
-            model.addAttribute("response", result);
+            // 3. Pass individual fields to the View
+            model.addAttribute("statusCode", result.getStatusCode() + " " + result.getStatusMessage());
+            model.addAttribute("cipherSuite", result.getCipherSuite());
+            model.addAttribute("response", result.getBody()); // This is the actual JSON
             model.addAttribute("success", true);
 
         } catch (Exception e) {
@@ -59,6 +62,7 @@ public class JksValidatorController {
             while (cause.getCause() != null && cause.getCause() != cause) {
                 cause = cause.getCause();
             }
+            // For errors, we populate 'response' with the error message
             model.addAttribute("response", "Error: " + cause.getMessage());
             model.addAttribute("success", false);
         }
