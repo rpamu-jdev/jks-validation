@@ -12,7 +12,7 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>jksvalidator</artifactId>
+    <artifactId>jks-validator</artifactId>
     <version>1.0.1</version>
     <packaging>jar</packaging>
 
